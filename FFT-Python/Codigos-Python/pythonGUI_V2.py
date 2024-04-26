@@ -8,6 +8,7 @@ import os
 import shutil
 import tkinter.filedialog
 import paho.mqtt.client as mqtt
+from tkinter import PhotoImage
 
 # Function to send an MQTT message
 def send_mqtt_message():
@@ -28,7 +29,9 @@ client.connect("127.0.0.1", 1883, 60)  # Replace with your broker's address and 
 
 # Create a tkinter window
 window = tk.Tk()
-window.title("Acceleration Data Visualization")
+window.title("INTERFAZ DE MONITOREO DE CONTROL - SISTEMA ESP32 JOSE TOVAR")
+img = PhotoImage(file="C:\\Users\\jatov\\Documents\\Universidad\\TEG\\CosasTEG_JT\\FFT-Python\\Codigos-Python\\logoingenieria.png")
+window.iconphoto(False, img)
 
 # Set the weight of the columns
 window.columnconfigure(0, weight=1)  # Make column 0 expand
@@ -53,7 +56,7 @@ option_menu.grid(column=1, row=3)
 # Create a figure and axis for plotting
 fig, ax = plt.subplots()
  # Assuming fig is your Figure object
-fig.suptitle('INTERFAZ DE MONITOREO DE CONTROL - SISTEMA ESP32 JOSE TOVAR', fontsize=10, fontweight='bold')
+fig.suptitle('REGISTRO DE ACELERACIÓN EN TIEMPO', fontsize=10, fontweight='bold')
 
 canvas = FigureCanvasTkAgg(fig, master=window)
 widget = canvas.get_tk_widget()
@@ -61,16 +64,17 @@ widget.grid(column=1, row=0)
 
 # Create a second figure and axis for plotting the FFT
 fig_fft, ax_fft = plt.subplots()
+fig_fft.suptitle('ESPECTRO EN FRECUENCIA DEL REGISTRO ESCOGIDO USANDO FFT', fontsize=10, fontweight='bold')
 canvas_fft = FigureCanvasTkAgg(fig_fft, master=window)
 widget_fft = canvas_fft.get_tk_widget()
 widget_fft.grid(column=2, row=0)
 
 # Create a frame for the control section
 control_frame = tk.Frame(window)
-control_frame.grid(column=0, row=0, sticky='n')
+control_frame.grid(column=0, row=0, sticky='n', pady=150)
 
 # Create a label for the control section
-control_label = tk.Label(control_frame, text="Control Section", font=("Arial", 14))
+control_label = tk.Label(control_frame, text="Control \n Section", font=("Arial", 14))
 control_label.pack()
 
 # Create a button in the control section
@@ -121,11 +125,14 @@ def update_plots():
     ax.plot(time, z, label='Eje Z')
     ax.set_xlabel('Tiempo')
     ax.set_ylabel('Aceleración')
+    ax.grid(True)
+    
     ax_fft.plot(positive_freq, np.abs(fft_1[:len(positive_freq)]), label='FFT del Eje X')
     ax_fft.plot(positive_freq, np.abs(fft_2[:len(positive_freq)]), label='FFT del Eje Y')
     ax_fft.plot(positive_freq, np.abs(fft_3[:len(positive_freq)]), label='FFT del Eje Z')
     ax_fft.set_xlabel('Frequency (Hz)')
     ax_fft.set_ylabel('Amplitude')
+    ax_fft.grid(True)
 
     # Get the frequencies from the highest amplitude for each axis
     max_freq1 = positive_freq[np.argmax(np.abs(fft_1[:len(positive_freq)]))]
@@ -139,7 +146,7 @@ def update_plots():
     ax_fft.annotate(f'FmaxY): {max_freq2:.2f}', xy=(max_freq2, np.max(np.abs(fft_2[:len(positive_freq)]))), xytext=(-10 if max_freq2 > median_freq else 10,10), textcoords='offset points', arrowprops=dict(arrowstyle='->'))
     ax_fft.annotate(f'FmaxZ: {max_freq3:.2f}', xy=(max_freq3, np.max(np.abs(fft_3[:len(positive_freq)]))), xytext=(-10 if max_freq3 > median_freq else 10,-10), textcoords='offset points', arrowprops=dict(arrowstyle='->'))
 
-
+    
     ax.legend()
     ax_fft.legend()
 
