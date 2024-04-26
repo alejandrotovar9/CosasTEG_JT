@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Specify the CSV file path
-csv_file_path = 'C:\\Users\\jatov\\Documents\\Universidad\\TEG\\CosasTEG_JT\\FFT-Python\\nodereddata.csv'
+csv_file_path = 'C:\\Users\\jatov\\Documents\\Universidad\\TEG\\CosasTEG_JT\\FFT-Python\\nodereddata1.csv'
 
 # Read the CSV file and assign column names
 df = pd.read_csv(csv_file_path, header=None, names=['x', 'y', 'z'])
