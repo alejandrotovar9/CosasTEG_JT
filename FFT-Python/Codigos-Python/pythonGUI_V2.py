@@ -9,6 +9,7 @@ import shutil
 import tkinter.filedialog
 import paho.mqtt.client as mqtt
 from tkinter import PhotoImage
+import filtros
 
 # Function to send an MQTT message
 def send_mqtt_message():
@@ -39,19 +40,39 @@ window.columnconfigure(1, weight=1)  # Make column 1 expand
 window.columnconfigure(2, weight=1)  # Make column 2 expand
 
 # Get a list of files in the specific folder
-folder_path = "C:\\Users\\jatov\\Documents\\Universidad\\TEG\CosasTEG_JT\\FFT-Python"
+folder_path = "C:\\Users\\jatov\\Documents\\Universidad\\TEG\CosasTEG_JT\\FFT-Python\\DatosACL_P1"
+# # Create a StringVar object to hold the selected file name
 file_names = os.listdir(folder_path)
-
-# Create a StringVar object to hold the selected file name
 selected_file_name = tk.StringVar(window)
 
-# Create a label for the OptionMenu widget
-label = tk.Label(window, text="Select a file:")
-label.grid(column=1, row=2)
+# Function to update the list of available files
+def update_file_list():
+    # Get a list of files in the specific folder
+    file_names = os.listdir(folder_path)
+
+    # Update the menu of the OptionMenu widget
+    menu = option_menu["menu"]
+    menu.delete(0, "end")
+    for file_name in file_names:
+        menu.add_command(label=file_name, command=lambda value=file_name: selected_file_name.set(value))
+
+    # Schedule this function to be called again after 5000 milliseconds (5 seconds)
+    window.after(5000, update_file_list)
 
 # Create an OptionMenu widget
 option_menu = tk.OptionMenu(window, selected_file_name, *file_names)
 option_menu.grid(column=1, row=3)
+
+# # Create a StringVar object to hold the selected file name
+# selected_file_name = tk.StringVar(window)
+
+# # Create a label for the OptionMenu widget
+# label = tk.Label(window, text="Select a file:")
+# label.grid(column=1, row=2)
+
+# # Create an OptionMenu widget
+# option_menu = tk.OptionMenu(window, selected_file_name, *file_names)
+# option_menu.grid(column=1, row=3)
 
 # Create a figure and axis for plotting
 fig, ax = plt.subplots()
@@ -103,10 +124,20 @@ def update_plots():
     y = df['y']
     z = df['z']
 
+    # Apply Hanning window
+    window = np.hanning(len(x))
+    windowed_data_x = x * window
+    windowed_data_y = y * window
+    windowed_data_z = z * window
+
     # Compute the FFT of the acceleration data sets using numpy
-    fft_1 = np.fft.fft(x)
-    fft_2 = np.fft.fft(y)
-    fft_3 = np.fft.fft(z)
+    # fft_1 = np.fft.fft(x)
+    # fft_2 = np.fft.fft(y)
+    # fft_3 = np.fft.fft(z)
+
+    fft_1 = np.fft.fft(windowed_data_x)
+    fft_2 = np.fft.fft(windowed_data_y)
+    fft_3 = np.fft.fft(windowed_data_z)
 
     # Get the positive frequencies
     freq = np.fft.fftfreq(len(x), d=1/200)  # d is the inverse of the sampling rate
@@ -126,25 +157,36 @@ def update_plots():
     ax.set_xlabel('Tiempo')
     ax.set_ylabel('Aceleración')
     ax.grid(True)
-    
-    ax_fft.plot(positive_freq, np.abs(fft_1[:len(positive_freq)]), label='FFT del Eje X')
-    ax_fft.plot(positive_freq, np.abs(fft_2[:len(positive_freq)]), label='FFT del Eje Y')
-    ax_fft.plot(positive_freq, np.abs(fft_3[:len(positive_freq)]), label='FFT del Eje Z')
+
+
+    xfil = filtros.butter_lowpass_filter(fft_1, 50, 200, 5)
+    yfil = filtros.butter_lowpass_filter(fft_2, 50, 200, 5)
+    zfil = filtros.butter_lowpass_filter(fft_3, 50, 200, 5)
+
+    ax_fft.plot(positive_freq, np.abs(xfil[:len(positive_freq)]), label='FFT del Eje X filtrada')
+    ax_fft.plot(positive_freq, np.abs(yfil[:len(positive_freq)]), label='FFT del Eje Y filtrada')
+    ax_fft.plot(positive_freq, np.abs(zfil[:len(positive_freq)]), label='FFT del Eje Z filtrada')
+
+    # ax_fft.plot(positive_freq, np.abs(fft_1[:len(positive_freq)]), label='FFT del Eje X')
+    # ax_fft.plot(positive_freq, np.abs(fft_2[:len(positive_freq)]), label='FFT del Eje Y')
+    # ax_fft.plot(positive_freq, np.abs(fft_3[:len(positive_freq)]), label='FFT del Eje Z')
     ax_fft.set_xlabel('Frequency (Hz)')
     ax_fft.set_ylabel('Amplitude')
     ax_fft.grid(True)
 
+    
+
     # Get the frequencies from the highest amplitude for each axis
-    max_freq1 = positive_freq[np.argmax(np.abs(fft_1[:len(positive_freq)]))]
-    max_freq2 = positive_freq[np.argmax(np.abs(fft_2[:len(positive_freq)]))]
-    max_freq3 = positive_freq[np.argmax(np.abs(fft_3[:len(positive_freq)]))]
+    max_freq1 = positive_freq[np.argmax(np.abs(xfil[:len(positive_freq)]))]
+    max_freq2 = positive_freq[np.argmax(np.abs(yfil[:len(positive_freq)]))]
+    max_freq3 = positive_freq[np.argmax(np.abs(zfil[:len(positive_freq)]))]
 
     median_freq = positive_freq[len(positive_freq)//2]
 
     # Annotate the maximum frequencies on the FFT plots without overlapping using the median
-    ax_fft.annotate(f'FmaxX: {max_freq1:.2f}', xy=(max_freq1, np.max(np.abs(fft_1[:len(positive_freq)]))), xytext=(-10 if max_freq1 > median_freq else 10,30), textcoords='offset points', arrowprops=dict(arrowstyle='->'))
-    ax_fft.annotate(f'FmaxY): {max_freq2:.2f}', xy=(max_freq2, np.max(np.abs(fft_2[:len(positive_freq)]))), xytext=(-10 if max_freq2 > median_freq else 10,10), textcoords='offset points', arrowprops=dict(arrowstyle='->'))
-    ax_fft.annotate(f'FmaxZ: {max_freq3:.2f}', xy=(max_freq3, np.max(np.abs(fft_3[:len(positive_freq)]))), xytext=(-10 if max_freq3 > median_freq else 10,-10), textcoords='offset points', arrowprops=dict(arrowstyle='->'))
+    ax_fft.annotate(f'Fmax_X: {max_freq1:.2f}', xy=(max_freq1, np.max(np.abs(xfil[:len(positive_freq)]))), xytext=(-10 if max_freq1 > median_freq else 10,30), textcoords='offset points', arrowprops=dict(arrowstyle='->'))
+    ax_fft.annotate(f'Fmax_Y: {max_freq2:.2f}', xy=(max_freq2, np.max(np.abs(yfil[:len(positive_freq)]))), xytext=(-10 if max_freq2 > median_freq else 10,10), textcoords='offset points', arrowprops=dict(arrowstyle='->'))
+    ax_fft.annotate(f'Fmax_Z: {max_freq3:.2f}', xy=(max_freq3, np.max(np.abs(zfil[:len(positive_freq)]))), xytext=(-10 if max_freq3 > median_freq else 10,-10), textcoords='offset points', arrowprops=dict(arrowstyle='->'))
 
     
     ax.legend()
@@ -162,8 +204,11 @@ save_button.grid(column=2, row=1)
 button = tk.Button(window, text="Update plots", command=update_plots)
 button.grid(column=1, row=1)
 
+# Start updating the file list
+update_file_list()
+
 # Schedule the function to be called after 1000 milliseconds
-window.after(10000, update_plots)
+#window.after(10000, update_plots)
 
 # Start the tkinter main loop
 window.mainloop()
