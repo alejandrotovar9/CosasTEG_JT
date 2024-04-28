@@ -11,6 +11,13 @@ import paho.mqtt.client as mqtt
 from tkinter import PhotoImage
 import filtros
 
+# Function to be called when a message is received
+def on_message(client, userdata, message):
+    # Check if the message payload is "ON"
+    if message.payload.decode() == "received":
+        # Create a label with the text "ON received" and place it in the window
+        label.config(text="Nuevo registro disponible!")
+
 # Function to send an MQTT message
 def send_mqtt_message():
     # Publish a message to a certain topic
@@ -26,6 +33,10 @@ def send_mqtt_message():
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 # Connect to the MQTT broker
 client.connect("127.0.0.1", 1883, 60)  # Replace with your broker's address and port
+# Set the on_message callback function
+client.on_message = on_message
+# Subscribe to a topic
+client.subscribe("esp32/alerta_rx")
 # Start the loop
 client.loop_start()
 
@@ -36,15 +47,26 @@ img = PhotoImage(file="C:\\Users\\jatov\\Documents\\Universidad\\TEG\\CosasTEG_J
 window.iconphoto(False, img)
 
 #COLUMNAS
-window.columnconfigure(0, weight=1)  # Make column 0 expand
+window.columnconfigure(0, weight=2)  # Make column 0 expand
 window.columnconfigure(1, weight=1)  # Make column 1 expand
 window.columnconfigure(2, weight=1)  # Make column 2 expand
 
 #LISTA DE ARCHIVOS A ESCOGER
-folder_path = "C:\\Users\\jatov\\Documents\\Universidad\\TEG\CosasTEG_JT\\FFT-Python\\DatosACL_P1"
-# # Create a StringVar object to hold the selected file name
+folder_path = "C:\\Users\\jatov\\Documents\\Universidad\\TEG\\Pruebas_DatosAceleracion\\DatosACL_P1"
+#Create a StringVar object to hold the selected file name
 file_names = os.listdir(folder_path)
+
+# Create a Frame widget
+frameArchivos = tk.Frame(window)
+# Place the Frame in the grid
+frameArchivos.grid(column=1, row=3)
+
+label = tk.Label(frameArchivos, text="No hay registros nuevos")
+label.grid(column=0, row=1)
+
 selected_file_name = tk.StringVar(window)
+# Set the title of the dropdown button
+selected_file_name.set("Seleccione un registro")
 
 # Function to update the list of available files
 def update_file_list():
@@ -60,9 +82,9 @@ def update_file_list():
     # Schedule this function to be called again after 5000 milliseconds (5 seconds)
     window.after(5000, update_file_list)
 
-# Create an OptionMenu widget
-option_menu = tk.OptionMenu(window, selected_file_name, *file_names)
-option_menu.grid(column=1, row=3)
+#MENU DROPDOWN PARA ESCOGER ARCHIVO
+option_menu = tk.OptionMenu(frameArchivos, selected_file_name, *file_names)
+option_menu.grid(column=1, row=1)
 
 #FIGURA DE ACELERACION
 fig, ax = plt.subplots()
@@ -83,11 +105,12 @@ widget_fft.grid(column=2, row=0)
 control_frame = tk.Frame(window)
 control_frame.grid(column=0, row=0, sticky='n', pady=150)
 # Create a label for the control section
-control_label = tk.Label(control_frame, text="Control \n Section", font=("Arial", 14))
+control_label = tk.Label(control_frame, text="Sección de \n Control", font=("Arial", 14))
 control_label.pack()
 # Create a button in the control section
 control_button = tk.Button(control_frame, text="Obtener registro", command=send_mqtt_message)
 control_button.pack()
+
 
 #AVENTANAMIENTO
 windowing_functions = ['Hanning', 'Hamming', 'Blackman']
@@ -97,7 +120,7 @@ selected_windowing_function = tk.StringVar()
 selected_windowing_function.set(windowing_functions[0])
 # Create a dropdown menu to select the windowing function
 windowing_menu = tk.OptionMenu(window, selected_windowing_function, *windowing_functions)
-windowing_menu.grid(column=2, row=3)  # Adjust the grid position as needed
+windowing_menu.grid(column=2, row=2)  # Adjust the grid position as needed
 
 #FUNCION DE GUARDADO EN CSV
 def save_file():
@@ -110,13 +133,40 @@ def save_file():
         shutil.copyfile(folder_path + "\\" + selected_file_name.get(), dest_filename)
 
 # Create a button that calls the save_file function when clicked
-save_button = tk.Button(window, text="Save CSV", command=save_file)
-save_button.grid(column=2, row=1)
+save_button = tk.Button(window, text="Guardar CSV", command=save_file)
+save_button.grid(column=2, row=3)
+
+#VALORES ACTUALES DE TEMPERATURA Y HUMEDAD
+# Create a Frame widget
+frameTH = tk.Frame(window, highlightbackground="blue", highlightthickness=1)
+# Place the Frame in the grid
+frameTH.grid(column=2, row=1, )
+# Current value labels
+current_value_label_x = tk.Label(frameTH, text="Humedad relativa:", font=("Arial Bold", 12), background="#e0e0e0")
+current_value_label_x.grid(column=1, row=1, padx=10)
+current_value_label_y = tk.Label(frameTH, text="Temperatura:", font=("Arial Bold", 12), background="#e0e0e0")
+current_value_label_y.grid(column=2, row=1, padx=10)
+
+#VALORES ACTUALES DE INCLINACION
+# Create a Frame widget
+frameInc = tk.Frame(window, highlightbackground="blue", highlightthickness=1)
+# Place the Frame in the grid
+frameInc.grid(column=1, row=1)
+# Current value labels
+current_value_label_yaw = tk.Label(frameInc, text="Yaw:", font=("Arial Bold", 12), background="#e0e0e0")
+current_value_label_yaw.grid(column=1, row=1, padx=10)
+current_value_label_pitch = tk.Label(frameInc, text="Pitch:", font=("Arial Bold", 12), background="#e0e0e0")
+current_value_label_pitch.grid(column=2, row=1, padx=10)
+current_value_label_roll = tk.Label(frameInc, text="Roll:", font=("Arial Bold", 12), background="#e0e0e0")
+current_value_label_roll.grid(column=3, row=1, padx=10)
 
 #FUNCION PRINCIPAL DE ACTUALIZACION DE PLOTS
 def update_plots():
     # Get the selected file name
     file_name = selected_file_name.get()
+
+    #erase the previous contents of the label
+    label.config(text = "No hay registros nuevos")
 
     # Read the CSV file and assign column names
     df = pd.read_csv(os.path.join(folder_path, file_name), header=None, names=['x', 'y', 'z'])
@@ -125,6 +175,14 @@ def update_plots():
     x = df['x']
     y = df['y']
     z = df['z']
+
+    # Update the labels with the last values of x and y
+    current_value_label_x.config(text="Humedad relativa: " + str(60) + "%")
+    current_value_label_y.config(text="Temperatura: " + str(22) + " °C")
+    # Update the labels with the last values of yaw, pitch and roll
+    current_value_label_yaw.config(text="Yaw: " + str(10) + "°")
+    current_value_label_pitch.config(text="Pitch: " + str(20) + "°")
+    current_value_label_roll.config(text="Roll: " + str(30) + "°")
 
     # Apply Hanning window
     # Later in your code, use the selected windowing function
@@ -201,8 +259,8 @@ def update_plots():
     canvas_fft.draw()
 
 # Create a button that calls the update_plots function when clicked
-button = tk.Button(window, text="Update plots", command=update_plots)
-button.grid(column=1, row=1)
+button = tk.Button(window, text="Actualizar gráfica", command=update_plots)
+button.grid(column=1, row=2)
 
 # Start updating the file list
 update_file_list()
