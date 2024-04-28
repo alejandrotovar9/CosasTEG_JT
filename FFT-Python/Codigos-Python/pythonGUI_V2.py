@@ -22,24 +22,25 @@ def send_mqtt_message():
     # Enable the button after 5000 milliseconds (5 seconds)
     window.after(5000, lambda: control_button.config(state="normal"))
 
-# Create an MQTT client
+#CLIENTE MQTT
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-
 # Connect to the MQTT broker
 client.connect("127.0.0.1", 1883, 60)  # Replace with your broker's address and port
+# Start the loop
+client.loop_start()
 
-# Create a tkinter window
+#VENTANA PRINCIPAL
 window = tk.Tk()
 window.title("INTERFAZ DE MONITOREO DE CONTROL - SISTEMA ESP32 JOSE TOVAR")
 img = PhotoImage(file="C:\\Users\\jatov\\Documents\\Universidad\\TEG\\CosasTEG_JT\\FFT-Python\\Codigos-Python\\logoingenieria.png")
 window.iconphoto(False, img)
 
-# Set the weight of the columns
+#COLUMNAS
 window.columnconfigure(0, weight=1)  # Make column 0 expand
 window.columnconfigure(1, weight=1)  # Make column 1 expand
 window.columnconfigure(2, weight=1)  # Make column 2 expand
 
-# Get a list of files in the specific folder
+#LISTA DE ARCHIVOS A ESCOGER
 folder_path = "C:\\Users\\jatov\\Documents\\Universidad\\TEG\CosasTEG_JT\\FFT-Python\\DatosACL_P1"
 # # Create a StringVar object to hold the selected file name
 file_names = os.listdir(folder_path)
@@ -63,46 +64,42 @@ def update_file_list():
 option_menu = tk.OptionMenu(window, selected_file_name, *file_names)
 option_menu.grid(column=1, row=3)
 
-# # Create a StringVar object to hold the selected file name
-# selected_file_name = tk.StringVar(window)
-
-# # Create a label for the OptionMenu widget
-# label = tk.Label(window, text="Select a file:")
-# label.grid(column=1, row=2)
-
-# # Create an OptionMenu widget
-# option_menu = tk.OptionMenu(window, selected_file_name, *file_names)
-# option_menu.grid(column=1, row=3)
-
-# Create a figure and axis for plotting
+#FIGURA DE ACELERACION
 fig, ax = plt.subplots()
  # Assuming fig is your Figure object
 fig.suptitle('REGISTRO DE ACELERACIÓN EN TIEMPO', fontsize=10, fontweight='bold')
-
 canvas = FigureCanvasTkAgg(fig, master=window)
 widget = canvas.get_tk_widget()
 widget.grid(column=1, row=0)
 
-# Create a second figure and axis for plotting the FFT
+#FIGURA PARA FFT
 fig_fft, ax_fft = plt.subplots()
 fig_fft.suptitle('ESPECTRO EN FRECUENCIA DEL REGISTRO ESCOGIDO USANDO FFT', fontsize=10, fontweight='bold')
 canvas_fft = FigureCanvasTkAgg(fig_fft, master=window)
 widget_fft = canvas_fft.get_tk_widget()
 widget_fft.grid(column=2, row=0)
 
-# Create a frame for the control section
+#SECCION DE CONTROL
 control_frame = tk.Frame(window)
 control_frame.grid(column=0, row=0, sticky='n', pady=150)
-
 # Create a label for the control section
 control_label = tk.Label(control_frame, text="Control \n Section", font=("Arial", 14))
 control_label.pack()
-
 # Create a button in the control section
 control_button = tk.Button(control_frame, text="Obtener registro", command=send_mqtt_message)
 control_button.pack()
 
-# Function to save the current file
+#AVENTANAMIENTO
+windowing_functions = ['Hanning', 'Hamming', 'Blackman']
+# Create a StringVar to hold the selected windowing function
+selected_windowing_function = tk.StringVar()
+# Set the default windowing function
+selected_windowing_function.set(windowing_functions[0])
+# Create a dropdown menu to select the windowing function
+windowing_menu = tk.OptionMenu(window, selected_windowing_function, *windowing_functions)
+windowing_menu.grid(column=2, row=3)  # Adjust the grid position as needed
+
+#FUNCION DE GUARDADO EN CSV
 def save_file():
     # Ask the user for the destination file name
     dest_filename = tkinter.filedialog.asksaveasfilename(defaultextension=".csv")
@@ -112,6 +109,11 @@ def save_file():
         # Copy the current file to the destination file (current file is the complete path to the file opened)
         shutil.copyfile(folder_path + "\\" + selected_file_name.get(), dest_filename)
 
+# Create a button that calls the save_file function when clicked
+save_button = tk.Button(window, text="Save CSV", command=save_file)
+save_button.grid(column=2, row=1)
+
+#FUNCION PRINCIPAL DE ACTUALIZACION DE PLOTS
 def update_plots():
     # Get the selected file name
     file_name = selected_file_name.get()
@@ -125,7 +127,14 @@ def update_plots():
     z = df['z']
 
     # Apply Hanning window
-    window = np.hanning(len(x))
+    # Later in your code, use the selected windowing function
+    if selected_windowing_function.get() == 'Hanning':
+        window = np.hanning(len(x))
+    elif selected_windowing_function.get() == 'Hamming':
+        window = np.hamming(len(x))
+    elif selected_windowing_function.get() == 'Blackman':
+        window = np.blackman(len(x))
+
     windowed_data_x = x * window
     windowed_data_y = y * window
     windowed_data_z = z * window
@@ -154,27 +163,22 @@ def update_plots():
     ax.plot(time, x, label='Eje X')
     ax.plot(time, y, label='Eje Y')
     ax.plot(time, z, label='Eje Z')
-    ax.set_xlabel('Tiempo')
-    ax.set_ylabel('Aceleración')
+    ax.set_xlabel('Tiempo (s)')
+    ax.set_ylabel('Aceleración (m/s^2)')
     ax.grid(True)
 
 
-    xfil = filtros.butter_lowpass_filter(fft_1, 50, 200, 5)
-    yfil = filtros.butter_lowpass_filter(fft_2, 50, 200, 5)
-    zfil = filtros.butter_lowpass_filter(fft_3, 50, 200, 5)
+    xfil = filtros.butter_lowpass_filter(fft_1, 35, 200, 5)
+    yfil = filtros.butter_lowpass_filter(fft_2, 35, 200, 5)
+    zfil = filtros.butter_lowpass_filter(fft_3, 35, 200, 5)
 
     ax_fft.plot(positive_freq, np.abs(xfil[:len(positive_freq)]), label='FFT del Eje X filtrada')
     ax_fft.plot(positive_freq, np.abs(yfil[:len(positive_freq)]), label='FFT del Eje Y filtrada')
     ax_fft.plot(positive_freq, np.abs(zfil[:len(positive_freq)]), label='FFT del Eje Z filtrada')
 
-    # ax_fft.plot(positive_freq, np.abs(fft_1[:len(positive_freq)]), label='FFT del Eje X')
-    # ax_fft.plot(positive_freq, np.abs(fft_2[:len(positive_freq)]), label='FFT del Eje Y')
-    # ax_fft.plot(positive_freq, np.abs(fft_3[:len(positive_freq)]), label='FFT del Eje Z')
-    ax_fft.set_xlabel('Frequency (Hz)')
-    ax_fft.set_ylabel('Amplitude')
+    ax_fft.set_xlabel('Frecuencia (Hz)')
+    ax_fft.set_ylabel('Amplitud')
     ax_fft.grid(True)
-
-    
 
     # Get the frequencies from the highest amplitude for each axis
     max_freq1 = positive_freq[np.argmax(np.abs(xfil[:len(positive_freq)]))]
@@ -195,10 +199,6 @@ def update_plots():
     # Redraw the plots
     canvas.draw()
     canvas_fft.draw()
-
-# Create a button that calls the save_file function when clicked
-save_button = tk.Button(window, text="Save CSV", command=save_file)
-save_button.grid(column=2, row=1)
 
 # Create a button that calls the update_plots function when clicked
 button = tk.Button(window, text="Update plots", command=update_plots)
