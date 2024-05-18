@@ -1,0 +1,7 @@
+text = """
+En el siguiente trabajo se propone el diseño de un sensor inteligente para ser utilizado en aplicaciones de salud estructural. En primer lugar, se llevó a cabo la investigación documental necesaria para identificar las variables de interés para evaluar la respuesta dinámica de los sistemas estructurales y su relación con la instrumentación electrónica. Se escogió el hardware necesario para la implementación de un prototipo de pruebas capaz de verificar el funcionamiento del diseño. Se escogieron sensores de tecnología MEMS como el MPU6250, MPU9250 y BME280, en conjunto con el microcontrolador ESP32 y el módulo Ra-02 de Ai-Thinker para las comunicaciones inalámbricas. Se diseñó el software necesario para controlar el sistema haciendo uso de FreeRTOS y se implementaron con éxito las tareas tanto en el sensor inteligente como en la estación base para obtener los registros de vibración y de las variables cuasi-estáticas (temperatura, humedad relativa e inclinación). Se programó además una interfaz gráfica de monitoreo y control para observar los registros y enviar comandos al sensor inteligente. Las pruebas realizadas en el IMME demostraron el funcionamiento satisfactorio del sensor inteligente al comparar los registros obtenidos con el equipo de vibración comercial basado en la tarjeta PCI-6221 de National Instruments, obteniendo resultados muy similares que permitieron caracterizar el comportamiento dinámico de una estrucutra de acero.
+"""
+
+words = text.split()
+word_count = len(words)
+print(word_count)

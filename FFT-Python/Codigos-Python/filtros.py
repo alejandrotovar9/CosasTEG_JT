@@ -1,4 +1,4 @@
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, filtfilt
 
 def butter_lowpass(cutoff, fs, order=5):
     nyq = 0.5 * fs
@@ -8,10 +8,8 @@ def butter_lowpass(cutoff, fs, order=5):
 
 def butter_lowpass_filter(data, cutoff, fs, order=5):
     b, a = butter_lowpass(cutoff, fs, order=order)
-    y = lfilter(b, a, data)
+    y = filtfilt(b, a, data)
     return y
-
-
 
 # Filter requirements.
 order = 6
